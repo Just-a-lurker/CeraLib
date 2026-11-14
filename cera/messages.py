@@ -105,8 +105,8 @@ class Reservation:
 
     def next_run(self, now: _dt.datetime) -> _dt.datetime:
         """When it will run: today at hour:minute if still ahead, otherwise
-        tomorrow. INFERRED: a time already passed today is assumed to mean
-        tomorrow; only a same-day run has been observed."""
+        tomorrow (both confirmed on a PCM03SMAX: a time already passed today
+        runs the next day)."""
         at = now.replace(hour=self.hour, minute=self.minute, second=0, microsecond=0)
         return at if at > now else at + _dt.timedelta(days=1)
 

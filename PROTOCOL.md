@@ -120,8 +120,8 @@ Confirmed: the machine starts **by itself** at that time on its own clock
 (observed with the phone sending no start command), runs once, then switches
 the reservation off (read back with `on=0`). Cancelling resends the same
 values with `on=0`. The machine stores one reservation and remembers it
-across connections. When a time already passed today is set, the run is
-assumed to happen the next day (not yet observed).
+across connections. A time that has already passed today runs the next day
+(confirmed).
 
 ## Temperature units
 

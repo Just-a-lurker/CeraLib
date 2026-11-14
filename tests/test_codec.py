@@ -178,7 +178,9 @@ class MessageTests(unittest.TestCase):
         r = m.Reservation(2, 19, 30, False, 0, True)
         self.assertEqual(r.time, "19:30")
         self.assertEqual(r.next_run(dt.datetime(2026, 11, 14, 19, 29, 48)), dt.datetime(2026, 11, 14, 19, 30))
+        # A time already passed today runs tomorrow (confirmed on the machine).
         self.assertEqual(r.next_run(dt.datetime(2026, 11, 14, 19, 34)), dt.datetime(2026, 11, 15, 19, 30))
+        self.assertEqual(r.next_run(dt.datetime(2026, 12, 31, 23, 0)), dt.datetime(2027, 1, 1, 19, 30))
 
     def test_status_parse(self):
         s = m.Status.parse(bytes.fromhex("013c032d0000"))
