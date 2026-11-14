@@ -195,6 +195,8 @@ class CeraClient:
     async def update_settings(self, *, flow=None, presoak_s=None, standstill_s=None,
                               extraction_raw=None) -> m.Settings:
         """Read-modify-write, like the vendor app (it also re-sends the target first)."""
+        if flow is not None and not m.FLOW_MIN <= flow <= m.FLOW_MAX:
+            raise ValueError(f"flow must be {m.FLOW_MIN}-{m.FLOW_MAX}")
         cur = await self.get_settings()
         new = m.Settings(
             cur.raw,

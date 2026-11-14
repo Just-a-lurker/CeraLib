@@ -84,6 +84,13 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(s.extraction_seconds, 120)  # raw 0x78
         self.assertEqual(m.Settings.parse(bytes.fromhex("0800000a00000a8c1efa010f")).extraction_seconds, 130)
 
+    def test_flow_range(self):
+        self.assertEqual((m.FLOW_MIN, m.FLOW_DEFAULT, m.FLOW_MAX), (1, 8, 15))
+        for flow, hexed in [(1, "01"), (2, "02"), (8, "08"), (14, "0e"), (15, "0f")]:
+            s = m.Settings.parse(bytes.fromhex(hexed + "00000a00000a781efa010f"))
+            self.assertEqual(s.flow, flow)
+            self.assertEqual(s.write_payload().hex(), hexed + "000078")
+
     def test_status_parse(self):
         s = m.Status.parse(bytes.fromhex("013c032d0000"))
         self.assertEqual((s.battery_raw, s.water_temp_c, s.state), (0x3C, 0x2D, m.State.IDLE))
