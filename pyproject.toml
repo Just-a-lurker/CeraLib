@@ -1,6 +1,6 @@
 [project]
 name = "ceralib"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local BLE control library for PCM03-family portable espresso machines"
 readme = "README.md"
 license = { text = "MIT" }

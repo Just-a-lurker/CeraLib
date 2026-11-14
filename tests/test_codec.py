@@ -53,6 +53,14 @@ class CodecTests(unittest.TestCase):
         self.assertEqual((info.version_a, info.version_b, info.model), ("0.0.3", "0.0.9", "PCM03SMAX"))
 
 
+class ImportTests(unittest.TestCase):
+    def test_client_module_compiles(self):
+        # The client needs bleak only at runtime; compiling catches syntax errors.
+        import pathlib
+        src = pathlib.Path(__file__).resolve().parents[1] / "cera" / "client.py"
+        compile(src.read_bytes(), str(src), "exec")
+
+
 class MessageTests(unittest.TestCase):
     def test_temperature_conversion(self):
         self.assertEqual(m.c_to_f(95), 0xCB)
@@ -90,6 +98,23 @@ class MessageTests(unittest.TestCase):
             s = m.Settings.parse(bytes.fromhex(hexed + "00000a00000a781efa010f"))
             self.assertEqual(s.flow, flow)
             self.assertEqual(s.write_payload().hex(), hexed + "000078")
+
+    def test_stats(self):
+        import datetime as dt
+        run = next(r for r in FRAGMENT_RUNS if decode(bytes.fromhex(r[0])).cmd == m.CMD_STATS)
+        r = Reassembler()
+        for h in run:
+            out = r.feed(decode(bytes.fromhex(h)))
+        s = m.Stats.parse(out.payload)
+        today = dt.date(2026, 11, 14)  # Saturday, the capture date
+        self.assertEqual(len(s.daily), 313)
+        self.assertEqual(s.today, 1)
+        self.assertEqual(s.week(today), 2)                # default: Sunday start, like the app
+        self.assertEqual(s.week(today, week_start=6), 2)  # Sunday start
+        self.assertEqual(s.week(today, week_start=0), 1)  # Monday start
+        self.assertEqual(s.month(today), 3)
+        self.assertEqual(s.year(today), 208)
+        self.assertEqual(s.by_date(today)[dt.date(2026, 11, 8)], 1)
 
     def test_status_parse(self):
         s = m.Status.parse(bytes.fromhex("013c032d0000"))

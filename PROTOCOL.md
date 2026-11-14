@@ -50,7 +50,7 @@ enable notify -> `04` clock -> `15` -> `17` -> (`24`) -> `08` -> `06 00`
 | `00` | empty | request status; machine then pushes `01 <b> 03 <temp C> <state> 00` about once per second | confirmed |
 | `02` | `[mode, on]` | start (`on=1`) / stop (`on=0`) a brew mode | confirmed |
 | `04` | `[year-2020, month, day, weekday, hour, min, sec]` | set clock; weekday Saturday = 6 (Sunday unverified) | confirmed |
-| `06` | `00` | read a long table (21 fragments); layout unknown | unknown |
+| `06` | `00` | cup statistics: cups per day, newest first (below); 21 fragments | confirmed |
 | `08` | empty | device info: `[?] len+"0.0.3" len+"0.0.9" len+"PCM03SMAX" 06 02 02 02 02 02` | confirmed |
 | `15` | empty | reply `64 CC <F>`: last byte equals the current target in °F; other bytes maybe limits | inferred |
 | `16` | `[target °F]` | set target water temperature; 90 °C = `C2`, 95 °C = `CB` | confirmed |
@@ -91,6 +91,16 @@ was `3C` while the app showed 3 of 4 battery bars (**inferred**: battery).
 - Remaining bytes (`0a`, `1e fa 01 0f`, the `00`s) are unknown. A write must
   keep the others unchanged, so read first and modify one field. The vendor
   app also re-sends `16` (target) before every `18`.
+
+### Cup statistics (`06`)
+
+Reply payload: `01 39` (not decoded) followed by one byte per day, today
+first, then yesterday, and so on (313 days on a PCM03SMAX, about 10 months).
+"Today" follows the machine's clock, which the app sets on connect.
+
+Confirmed against the vendor app's totals: week (Sunday to Saturday), month
+and year are sums of these days. The count went up by one after a completed
+brew.
 
 ## Temperature units
 

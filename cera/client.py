@@ -17,7 +17,8 @@ NOTIFY_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"  # machine -> app
 WRITE_UUID = "0000fff2-0000-1000-8000-00805f9b34fb"   # app -> machine
 
 SETTLE_AFTER_CONNECT = 4.0
-REPLY_TIMEOUT = 0.5   # the vendor app re-sends after ~0.4 s without a reply
+REPLY_TIMEOUT = 0.5
+STATS_TIMEOUT = 3.0   # the stats table arrives in ~21 fragments   # the vendor app re-sends after ~0.4 s without a reply
 RETRIES = 2
 
 # Observed range only: the app offered 90-95 C in captures. Not a machine limit.
@@ -154,7 +155,7 @@ class CeraClient:
         if waiter and not waiter.done():
             waiter.set_result(frame)
 
-    async def request(self, cmd: int, payload: bytes = b"") -> Frame:
+    async def request(self, cmd: int, payload: bytes = b"", timeout: float = REPLY_TIMEOUT) -> Frame:
         """Send a command and return the reply with the same command byte."""
         data = encode(cmd, payload)
         for _ in range(RETRIES + 1):
@@ -162,7 +163,7 @@ class CeraClient:
             self._waiters[cmd] = fut
             try:
                 await self._write(data)
-                return await asyncio.wait_for(fut, REPLY_TIMEOUT)
+                return await asyncio.wait_for(fut, timeout)
             except asyncio.TimeoutError:
                 continue
             finally:
@@ -207,6 +208,13 @@ class CeraClient:
         )
         await self._set(m.CMD_SET_SETTINGS, new.write_payload())
         return await self.get_settings()
+
+    # -- statistics --------------------------------------------------------
+    async def get_stats(self) -> m.Stats:
+        """Read the per-day cup counts. Read-only. The reply arrives in about
+        21 notifications (~0.7 s), hence the longer timeout."""
+        frame = await self.request(m.CMD_STATS, bytes([0x00]), timeout=STATS_TIMEOUT)
+        return m.Stats.parse(frame.payload)
 
     # -- brewing: every action is an explicit call, nothing starts on its own
     async def start(self, mode: m.BrewMode) -> None:
