@@ -37,9 +37,15 @@ command, or the link drops within a few seconds. The vendor app hits this
 too. Measured on Windows: about 1 connection in 6 is bad, nothing sent on a
 silent connection wakes it (re-sending for 8 s, re-subscribing), and bad
 connections come in runs. So the client waits 4 s before subscribing and
-makes up to four attempts, each a new connection with a longer pause before
-it. A failed `connect()` can therefore take up to a minute; it closes the
-connection before raising, and raises only `CeraError`.
+makes up to four attempts (`connect(attempts=4)`), pausing 2 s, 4 s, then
+6 s between them. A failed attempt's connection is closed and discarded, and
+the next attempt builds a new bleak client: reusing one skips bleak's scan,
+while a new one only connects once the machine is advertising again, so the
+old link is really gone. A failed `connect()` can therefore take up to a
+minute; it closes the connection before raising, and raises only `CeraError`.
+
+Only `connect()` retries. A connection that drops later is reported through
+`on_disconnect` and is not re-established: call `connect()` again.
 
 ## Safety and warranty
 
