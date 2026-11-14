@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime as _dt
 import enum
 from dataclasses import dataclass
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Command bytes.
 CMD_STATUS = 0x00        # heartbeat (machine pushes ~1/s); app sends it empty on connect
@@ -137,6 +137,30 @@ class DeviceInfo:
 
 
 @dataclass(frozen=True)
+class Bucket:
+    """One bar of a stats chart: a day (week/month view) or a month (year view).
+
+    ``cups`` is None when the machine has no data for the whole bucket (before
+    its oldest stored day, or in the future). ``complete`` is False when part
+    of the bucket is older than the stored history, so the count may be low.
+    """
+
+    start: _dt.date
+    cups: Optional[int]
+    complete: bool
+
+
+def _add_months(year: int, month: int, delta: int) -> Tuple[int, int]:
+    index = year * 12 + (month - 1) + delta
+    return index // 12, index % 12 + 1
+
+
+def _month_days(year: int, month: int) -> int:
+    ny, nm = _add_months(year, month, 1)
+    return (_dt.date(ny, nm, 1) - _dt.date(year, month, 1)).days
+
+
+@dataclass(frozen=True)
 class Stats:
     """CMD_STATS reply: cups brewed per day, newest first.
 
@@ -182,6 +206,48 @@ class Stats:
     def year(self, today: _dt.date) -> int:
         """Cups since 1 January, limited to the days the machine stores."""
         return self._last(today.timetuple().tm_yday)
+
+    # -- periods for charts ---------------------------------------------
+    def oldest(self, today: _dt.date) -> _dt.date:
+        return today - _dt.timedelta(days=len(self.daily) - 1)
+
+    def day(self, today: _dt.date, date: _dt.date) -> Optional[int]:
+        """Cups on ``date``; None if it is in the future or not stored."""
+        i = (today - date).days
+        if i < 0 or i >= len(self.daily):
+            return None
+        return self.daily[i]
+
+    def _bucket(self, today: _dt.date, start: _dt.date, days: int) -> Bucket:
+        counts, missing = [], False
+        for k in range(days):
+            d = start + _dt.timedelta(days=k)
+            if d > today:
+                continue  # not happened yet: neither data nor missing
+            n = self.day(today, d)
+            if n is None:
+                missing = True
+            else:
+                counts.append(n)
+        return Bucket(start, sum(counts) if counts else None, not missing)
+
+    def week_series(self, today: _dt.date, offset: int = 0, week_start: int = 6) -> List[Bucket]:
+        """Seven day buckets for the week ``offset`` weeks from this one
+        (0 = this week, -1 = last week). Sunday start by default."""
+        start = today - _dt.timedelta(days=(today.weekday() - week_start) % 7 - 7 * offset)
+        return [self._bucket(today, start + _dt.timedelta(days=k), 1) for k in range(7)]
+
+    def month_series(self, today: _dt.date, offset: int = 0) -> List[Bucket]:
+        """One bucket per date of the month ``offset`` months from this one."""
+        y, mo = _add_months(today.year, today.month, offset)
+        first = _dt.date(y, mo, 1)
+        return [self._bucket(today, first + _dt.timedelta(days=k), 1)
+                for k in range(_month_days(y, mo))]
+
+    def year_series(self, today: _dt.date, offset: int = 0) -> List[Bucket]:
+        """Twelve month buckets for the year ``offset`` years from this one."""
+        y = today.year + offset
+        return [self._bucket(today, _dt.date(y, mo, 1), _month_days(y, mo)) for mo in range(1, 13)]
 
 
 def clock_payload(year: int, month: int, day: int, weekday: int,

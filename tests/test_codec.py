@@ -116,6 +116,40 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(s.year(today), 208)
         self.assertEqual(s.by_date(today)[dt.date(2026, 11, 8)], 1)
 
+    def test_stats_periods(self):
+        import datetime as dt
+        # today = Sat 14 Nov 2026; daily[0] is today, 20 days stored (back to 26 Oct).
+        daily = (2, 0, 0, 0, 0, 0, 1, 1) + (0,) * 6 + (5,) + (1,) * 5
+        s = m.Stats(b"9", daily)
+        today = dt.date(2026, 11, 14)
+        self.assertEqual(s.oldest(today), dt.date(2026, 10, 26))
+
+        week = s.week_series(today)
+        self.assertEqual(week[0].start, dt.date(2026, 11, 8))      # Sunday
+        self.assertEqual([b.cups for b in week], [1, 0, 0, 0, 0, 0, 2])
+        last_week = s.week_series(today, offset=-1)
+        self.assertEqual(last_week[0].start, dt.date(2026, 11, 1))
+        self.assertEqual(sum(b.cups for b in last_week), s.daily[7] + sum(s.daily[8:14]))
+
+        nov = s.month_series(today)
+        self.assertEqual(len(nov), 30)
+        self.assertEqual(sum(b.cups or 0 for b in nov), s.month(today))
+        self.assertIsNone(nov[20].cups)                             # 21 Nov: future
+        self.assertTrue(nov[20].complete)
+        octo = s.month_series(today, offset=-1)
+        self.assertIsNone(octo[0].cups)                             # 1 Oct: not stored
+        self.assertFalse(octo[0].complete)
+        self.assertEqual(octo[25].cups, 1)                          # 26 Oct: oldest stored
+
+        year = s.year_series(today)
+        self.assertEqual(len(year), 12)
+        self.assertEqual(year[10].cups, s.month(today))             # November
+        self.assertEqual(year[9].cups, 5 + 1 * 5)                   # October, partial
+        self.assertFalse(year[9].complete)
+        self.assertIsNone(year[0].cups)                             # January: not stored
+        self.assertIsNone(year[11].cups)                            # December: future
+        self.assertTrue(all(b.cups is None for b in s.year_series(today, offset=-1)))
+
     def test_status_parse(self):
         s = m.Status.parse(bytes.fromhex("013c032d0000"))
         self.assertEqual((s.battery_raw, s.water_temp_c, s.state), (0x3C, 0x2D, m.State.IDLE))
