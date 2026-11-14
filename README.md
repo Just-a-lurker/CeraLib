@@ -11,28 +11,32 @@ protocol, without the vendor app or cloud.
 
 The protocol was worked out from Bluetooth captures of the author's own
 machine talking to its app. No vendor code, firmware or assets are included.
-See [PROTOCOL.md](PROTOCOL.md).
+The full byte-level description is in [PROTOCOL.md](PROTOCOL.md), with each
+field marked confirmed or inferred.
 
-## Status
+## What it can do
 
-- `cera/codec.py`, `cera/messages.py`: tested against every frame in the
-  captures (`python -m unittest discover -s tests -t .`).
-- `cera/client.py` (bleak): read-only use (connect, device info, settings,
-  status heartbeat) verified on a PCM03SMAX from Windows. Setters, `start()`
-  and `stop()` are **not yet tested on hardware.** Known quirk: the machine
-  often ignores commands sent right after connecting, so the client waits 4 s
-  before subscribing and reconnects if it stays silent; even so about 1
-  connect in 5 still failed in testing.
-- Presoak and standstill are `presoak_s` / `standstill_s` (confirmed).
-  Extraction time is `extraction_raw`; the seconds formula (`raw/2 + 60`) is
-  inferred from two points only.
-- `get_stats()` reads cups per day (about 10 months) with week, month and
-  year totals; the format is confirmed against the vendor app and read live
-  from a PCM03SMAX. `week_series()`, `month_series()` and `year_series()`
-  return chart buckets for any week, month or year (use `offset` to go back).
-- `get_reservation()`, `set_reservation()` and `cancel_reservation()` schedule
-  a start the machine runs by itself, once, at a time on its own clock.
-- Not supported on purpose: firmware update.
+| Feature | API | Status |
+|---|---|---|
+| Find machines | `cera.discover()` | Verified on hardware |
+| Connect, device info, live status (water °C, state, battery) | `CeraClient`, `.info`, `.status`, `on_status` | Verified on hardware |
+| Target temperature | `set_target_temp_c()` | Verified on hardware |
+| Recipe: flow 1–15, presoak, standstill, extraction time | `get_settings()`, `update_settings()` | Verified on hardware |
+| Start and stop: heat, extract, heat & extract | `start()`, `stop()` | Verified on hardware |
+| Cup history: per day, week, month and year | `get_stats()`, `Stats.week_series()` and friends | Verified on hardware, matches the vendor app |
+| Schedule a start the machine runs by itself | `get_reservation()`, `set_reservation()`, `cancel_reservation()` | Format confirmed from captures; self-start, run-once and next-day behaviour confirmed on the machine |
+| Firmware update | – | Not supported, on purpose |
+
+Some values are inferred rather than confirmed: the battery scale (the raw
+value looks like a percentage) and the extraction time in seconds
+(`raw/2 + 60`, from two data points). See the open questions in
+[PROTOCOL.md](PROTOCOL.md#open-questions).
+
+**Known quirk:** right after connecting, the machine sometimes ignores every
+command. The vendor app hits this too. The client waits 4 s before
+subscribing and reconnects up to three times if the machine stays silent;
+in testing on Windows about 1 connection attempt in 5 still needed a retry
+from the caller.
 
 ## Safety and warranty
 
@@ -49,40 +53,77 @@ void its warranty, and this software comes with no warranty of any kind (see
 ## Install
 
 ```
-pip install git+https://github.com/Just-a-lurker/CeraLib.git
+pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.4.0
 ```
 
 Requires Python 3.9+ and [bleak](https://github.com/hbldh/bleak) 1.x, the
 version tested on hardware. Newer bleak major versions are not allowed until
-they have been tested.
-
-To use a fixed release, install a tag, for example
-`pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.1.0`.
+they have been tested. Pin a release tag as above; `main` may change.
 
 ## Use
 
+Close the vendor app first: the machine accepts one connection at a time.
+
 ```python
 import asyncio
-from cera import discover
+import datetime as dt
+
+from cera import BrewMode, ReservationMode, discover
 from cera.client import CeraClient
+
 
 async def main():
     machines = await discover(only_likely=True)
     async with CeraClient(machines[0].address) as c:
-        print(c.info, c.status, await c.get_settings())
+        print(c.info)                      # model and versions
+        print(c.status)                    # water_temp_c, state, battery_raw
+
+        # Recipe
+        await c.set_target_temp_c(93)
+        await c.update_settings(flow=8, presoak_s=1, standstill_s=0)
+
+        # Cup history
+        stats = await c.get_stats()
+        today = dt.date.today()
+        print(stats.today, stats.week(today), stats.month(today), stats.year(today))
+
+        # Schedule: the machine starts BY ITSELF at 07:30, once
+        await c.set_reservation(ReservationMode.HEAT_AND_EXTRACT, 7, 30)
+        await c.cancel_reservation()
+
+        # Manual brewing: always explicit, always stoppable
+        # await c.start(BrewMode.EXTRACT)
+        # await c.stop()
+
 
 asyncio.run(main())
 ```
 
-Close the vendor app first: the machine accepts one connection at a time.
+Reservations and manual starts number their modes differently: use
+`ReservationMode` for schedules and `BrewMode` for `start()`.
+
+## Development
+
+```
+pip install -e .
+python -m unittest discover -s tests -t .
+```
+
+The tests run without a machine: they replay frames from real captures
+(`tests/vectors.py` holds only the protocol bytes). `main` is protected;
+changes go through a pull request with passing CI.
 
 ## Contributing
 
-Captures from other models are welcome. Share only the hex values of the
-frames, never raw `btsnoop` logs or bug reports: they contain Bluetooth
-addresses and other private traffic. Run the tests before opening a pull
-request.
+Captures from other models, and answers to the
+[open questions](PROTOCOL.md#open-questions), are very welcome. Share only the
+hex values of the frames, never raw `btsnoop` logs or bug reports: they
+contain Bluetooth addresses and other private traffic.
 
 ## Apps using CeraLib
 
-- [CeraOpenApp](https://github.com/Just-a-lurker/CeraOpenApp): local test app with a browser UI.
+- [CeraOpenApp](https://github.com/Just-a-lurker/CeraOpenApp): local app with a browser UI.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
