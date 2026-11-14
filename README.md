@@ -33,10 +33,13 @@ value looks like a percentage) and the extraction time in seconds
 [PROTOCOL.md](PROTOCOL.md#open-questions).
 
 **Known quirk:** right after connecting, the machine sometimes ignores every
-command. The vendor app hits this too. The client waits 4 s before
-subscribing and reconnects up to three times if the machine stays silent;
-in testing on Windows about 1 connection attempt in 5 still needed a retry
-from the caller.
+command, or the link drops within a few seconds. The vendor app hits this
+too. Measured on Windows: about 1 connection in 6 is bad, nothing sent on a
+silent connection wakes it (re-sending for 8 s, re-subscribing), and bad
+connections come in runs. So the client waits 4 s before subscribing and
+makes up to four attempts, each a new connection with a longer pause before
+it. A failed `connect()` can therefore take up to a minute; it closes the
+connection before raising, and raises only `CeraError`.
 
 ## Safety and warranty
 
@@ -53,7 +56,7 @@ void its warranty, and this software comes with no warranty of any kind (see
 ## Install
 
 ```
-pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.4.0
+pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.4.1
 ```
 
 Requires Python 3.9+ and [bleak](https://github.com/hbldh/bleak) 1.x, the

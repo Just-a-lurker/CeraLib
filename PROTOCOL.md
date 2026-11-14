@@ -36,7 +36,12 @@ likely accepts a single connection, so close the vendor app first.
 - If there is no reply within ~0.4 s the vendor app re-sends the command.
 - Right after connecting, the machine sometimes ignores commands entirely.
   The vendor app hits this too: in one capture it re-sent the clock command
-  for ~12 s and reconnected before getting a reply.
+  for ~12 s and reconnected before getting a reply. Measured from Windows
+  (about 40 connections): roughly 1 connection in 6 is bad. Either the link
+  drops about 3 s after connecting, or it stays up and the machine answers
+  nothing. On a silent connection neither re-sending for 8 s nor
+  re-subscribing to `FFF1` helped; only a new connection does. Bad
+  connections come in runs (two in a row were seen 8 s apart).
 
 ## Connect sequence used by the vendor app (confirmed)
 
