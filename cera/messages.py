@@ -23,8 +23,10 @@ CMD_TARGET_TEMP = 0x16   # payload [target in degrees Fahrenheit]; reply echoes 
 CMD_GET_SETTINGS = 0x17  # request empty, reply 12-byte settings block
 CMD_SET_SETTINGS = 0x18  # payload [flow, presoak_s, standstill_s, extraction_raw]
 CMD_HISTORY = 0x19       # seen in captures, meaning unconfirmed; not exposed
-CMD_RESERVATION = 0x23   # seen in captures, meaning unconfirmed; not exposed
-CMD_QUERY_24 = 0x24      # read-only, meaning unconfirmed
+CMD_SET_RESERVATION = 0x23  # payload = Reservation (6 bytes); reply 01
+CMD_GET_RESERVATION = 0x24  # request empty; reply = Reservation (6 bytes)
+CMD_RESERVATION = CMD_SET_RESERVATION  # kept for compatibility
+CMD_QUERY_24 = CMD_GET_RESERVATION     # kept for compatibility
 
 STATUS_OK = b"\x01"      # reply payload for accepted set commands (confirmed)
 
@@ -44,6 +46,69 @@ class BrewMode(enum.IntEnum):
     HEAT = 0
     HEAT_AND_EXTRACT = 1
     EXTRACT = 2
+
+
+class ReservationMode(enum.IntEnum):
+    """Mode byte of a reservation (confirmed). Numbered differently from
+    BrewMode: here 0 is heat & extract and 1 is heating."""
+
+    HEAT_AND_EXTRACT = 0
+    HEAT = 1
+    EXTRACT = 2
+
+
+class Beep(enum.IntEnum):
+    """Reminder sound chosen in the vendor app (confirmed values). The phone
+    plays it, not the machine; the machine only stores the choice."""
+
+    DING_DONG = 0
+    DI_DI = 1
+    BU_GU = 2
+    BI_BI = 3
+
+
+@dataclass(frozen=True)
+class Reservation:
+    """A scheduled start stored on the machine (CMD_SET/GET_RESERVATION).
+
+    Layout: ``[mode, hour, minute, alarm, beep, enabled]`` (all confirmed).
+    The machine starts by itself at hour:minute on its own clock, runs once,
+    then switches the reservation off. ``alarm`` and ``beep`` are only stored
+    for phone apps, which play the reminder; the machine does not use them.
+    """
+
+    mode: int        # ReservationMode
+    hour: int
+    minute: int
+    alarm: bool      # False = silent reminder
+    beep: int        # Beep, ignored when alarm is False
+    enabled: bool
+
+    @classmethod
+    def parse(cls, payload: bytes) -> "Reservation":
+        if len(payload) != 6:
+            raise ValueError(f"reservation payload must be 6 bytes, got {len(payload)}")
+        return cls(payload[0], payload[1], payload[2], bool(payload[3]), payload[4], bool(payload[5]))
+
+    def payload(self) -> bytes:
+        if not 0 <= self.hour <= 23 or not 0 <= self.minute <= 59:
+            raise ValueError("time must be 00:00-23:59")
+        if self.mode not in tuple(ReservationMode):
+            raise ValueError(f"unknown reservation mode {self.mode}")
+        if not 0 <= self.beep <= 255:
+            raise ValueError("beep out of range")
+        return bytes([self.mode, self.hour, self.minute, int(self.alarm), self.beep, int(self.enabled)])
+
+    @property
+    def time(self) -> str:
+        return f"{self.hour:02d}:{self.minute:02d}"
+
+    def next_run(self, now: _dt.datetime) -> _dt.datetime:
+        """When it will run: today at hour:minute if still ahead, otherwise
+        tomorrow. INFERRED: a time already passed today is assumed to mean
+        tomorrow; only a same-day run has been observed."""
+        at = now.replace(hour=self.hour, minute=self.minute, second=0, microsecond=0)
+        return at if at > now else at + _dt.timedelta(days=1)
 
 
 #: Heartbeat state while running -> the CMD_BREW mode that stops it (inferred

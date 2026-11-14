@@ -150,6 +150,36 @@ class MessageTests(unittest.TestCase):
         self.assertIsNone(year[11].cups)                            # December: future
         self.assertTrue(all(b.cups is None for b in s.year_series(today, offset=-1)))
 
+    def test_reservations_match_captures(self):
+        # (frame payload sent by the vendor app, what the user chose)
+        cases = [
+            ("0007230000" "01", m.ReservationMode.HEAT_AND_EXTRACT, 7, 35, False, 0, True),
+            ("02150a0000" "01", m.ReservationMode.EXTRACT, 21, 10, False, 0, True),
+            ("02150a0000" "00", m.ReservationMode.EXTRACT, 21, 10, False, 0, False),
+            ("01131e0000" "01", m.ReservationMode.HEAT, 19, 30, False, 0, True),
+            ("01131e0100" "01", m.ReservationMode.HEAT, 19, 30, True, m.Beep.DING_DONG, True),
+            ("01131e0101" "01", m.ReservationMode.HEAT, 19, 30, True, m.Beep.DI_DI, True),
+            ("01131e0102" "01", m.ReservationMode.HEAT, 19, 30, True, m.Beep.BU_GU, True),
+            ("01131e0103" "01", m.ReservationMode.HEAT, 19, 30, True, m.Beep.BI_BI, True),
+        ]
+        for hexed, mode, hour, minute, alarm, beep, enabled in cases:
+            r = m.Reservation.parse(bytes.fromhex(hexed))
+            self.assertEqual((r.mode, r.hour, r.minute, r.alarm, r.beep, r.enabled),
+                             (mode, hour, minute, alarm, beep, enabled))
+            self.assertEqual(r.payload().hex(), hexed)
+            self.assertEqual(encode(m.CMD_SET_RESERVATION, r.payload())[4], 0x23)
+
+    def test_reservation_validation_and_next_run(self):
+        import datetime as dt
+        with self.assertRaises(ValueError):
+            m.Reservation(0, 24, 0, False, 0, True).payload()
+        with self.assertRaises(ValueError):
+            m.Reservation(9, 7, 0, False, 0, True).payload()
+        r = m.Reservation(2, 19, 30, False, 0, True)
+        self.assertEqual(r.time, "19:30")
+        self.assertEqual(r.next_run(dt.datetime(2026, 11, 14, 19, 29, 48)), dt.datetime(2026, 11, 14, 19, 30))
+        self.assertEqual(r.next_run(dt.datetime(2026, 11, 14, 19, 34)), dt.datetime(2026, 11, 15, 19, 30))
+
     def test_status_parse(self):
         s = m.Status.parse(bytes.fromhex("013c032d0000"))
         self.assertEqual((s.battery_raw, s.water_temp_c, s.state), (0x3C, 0x2D, m.State.IDLE))
