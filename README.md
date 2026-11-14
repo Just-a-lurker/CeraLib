@@ -30,13 +30,17 @@ See [PROTOCOL.md](PROTOCOL.md).
   year totals; the format is confirmed against the vendor app and read live
   from a PCM03SMAX. `week_series()`, `month_series()` and `year_series()`
   return chart buckets for any week, month or year (use `offset` to go back).
-- Not supported on purpose: firmware update, reservations.
+- `get_reservation()`, `set_reservation()` and `cancel_reservation()` schedule
+  a start the machine runs by itself, once, at a time on its own clock.
+- Not supported on purpose: firmware update.
 
 ## Safety and warranty
 
-This machine heats water and builds pressure. Nothing starts automatically:
-brewing and heating only happen through explicit calls (`start()`), and
-`stop()` stops whichever mode is running. Never leave it running unattended.
+This machine heats water and builds pressure. Manual brewing and heating only
+happen through explicit calls (`start()`), and `stop()` stops whichever mode is
+running. A reservation (`set_reservation()`) makes the machine start **by
+itself** at the scheduled time, even with no app connected: only set one when
+water and a cup will be in place. Never leave it running unattended.
 
 Use at your own risk. Controlling the machine with third-party software may
 void its warranty, and this software comes with no warranty of any kind (see

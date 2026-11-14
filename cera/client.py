@@ -216,7 +216,48 @@ class CeraClient:
         frame = await self.request(m.CMD_STATS, bytes([0x00]), timeout=STATS_TIMEOUT)
         return m.Stats.parse(frame.payload)
 
-    # -- brewing: every action is an explicit call, nothing starts on its own
+    # -- reservations ------------------------------------------------------
+    async def get_reservation(self) -> m.Reservation:
+        """Read the reservation stored on the machine (read-only)."""
+        return m.Reservation.parse((await self.request(m.CMD_GET_RESERVATION)).payload)
+
+    async def set_reservation(
+        self,
+        mode: m.ReservationMode,
+        hour: int,
+        minute: int,
+        *,
+        alarm: Optional[bool] = None,
+        beep: Optional[int] = None,
+    ) -> m.Reservation:
+        """Schedule a start. WARNING: the machine will then heat and/or extract
+        BY ITSELF at hour:minute (its own clock, set on connect), even with no
+        app connected. It runs once.
+
+        ``alarm`` and ``beep`` default to what is already stored, so the vendor
+        app keeps the user's reminder choice.
+        """
+        current = await self.get_reservation()
+        new = m.Reservation(
+            int(m.ReservationMode(mode)), hour, minute,
+            current.alarm if alarm is None else bool(alarm),
+            current.beep if beep is None else int(m.Beep(beep)),
+            True,
+        )
+        await self._set(m.CMD_SET_RESERVATION, new.payload())
+        return await self.get_reservation()
+
+    async def cancel_reservation(self) -> m.Reservation:
+        """Switch the stored reservation off (the vendor app resends it with
+        the last byte 0). Always safe to call."""
+        current = await self.get_reservation()
+        off = m.Reservation(current.mode if current.mode in tuple(m.ReservationMode) else 0,
+                            current.hour, current.minute, current.alarm, current.beep, False)
+        await self._set(m.CMD_SET_RESERVATION, off.payload())
+        return await self.get_reservation()
+
+    # -- brewing: manual starts are explicit calls (reservations above start
+    #    the machine by itself at the scheduled time)
     async def start(self, mode: m.BrewMode) -> None:
         await self._set(m.CMD_BREW, m.brew_payload(mode, True))
 

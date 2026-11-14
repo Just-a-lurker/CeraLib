@@ -56,7 +56,9 @@ enable notify -> `04` clock -> `15` -> `17` -> (`24`) -> `08` -> `06 00`
 | `16` | `[target °F]` | set target water temperature; 90 °C = `C2`, 95 °C = `CB` | confirmed |
 | `17` | empty | read settings block, 12 bytes (below) | confirmed |
 | `18` | `[flow, presoak_s, standstill_s, extraction]` | write settings (4 bytes, differs from the readback layout) | confirmed |
-| `19`, `23`, `24` | | seen in captures; meaning not established, not exposed by CeraLib | unknown |
+| `23` | `[mode, hour, minute, alarm, beep, on]` | set (`on=1`) or cancel (`on=0`) the reservation; reply `01` | confirmed |
+| `24` | empty | read the stored reservation (same 6 bytes) | confirmed |
+| `19` | empty | seen when the vendor app's history page opens; reply `01`; meaning not established | unknown |
 
 ### Brew modes (`02`)
 
@@ -101,6 +103,25 @@ first, then yesterday, and so on (313 days on a PCM03SMAX, about 10 months).
 Confirmed against the vendor app's totals: week (Sunday to Saturday), month
 and year are sums of these days. The count went up by one after a completed
 brew.
+
+### Reservation (`23` / `24`)
+
+```
+[mode] [hour] [minute] [alarm] [beep] [on]
+mode:   0 = heat & extract, 1 = heating, 2 = extract only
+        (numbered differently from the manual start command 02)
+hour, minute: 24-hour clock, machine time
+alarm:  0 = silent, 1 = alarm        stored only; the phone plays the sound
+beep:   0 ding dong, 1 di di, 2 bu gu, 3 bi bi   stored only
+on:     1 = scheduled, 0 = off
+```
+
+Confirmed: the machine starts **by itself** at that time on its own clock
+(observed with the phone sending no start command), runs once, then switches
+the reservation off (read back with `on=0`). Cancelling resends the same
+values with `on=0`. The machine stores one reservation and remembers it
+across connections. When a time already passed today is set, the run is
+assumed to happen the next day (not yet observed).
 
 ## Temperature units
 
