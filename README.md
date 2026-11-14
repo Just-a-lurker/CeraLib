@@ -27,7 +27,9 @@ See [PROTOCOL.md](PROTOCOL.md).
   Extraction time is `extraction_raw`; the seconds formula (`raw/2 + 60`) is
   inferred from two points only.
 - `get_stats()` reads cups per day (about 10 months) with week, month and
-  year totals; the format is confirmed against the vendor app.
+  year totals; the format is confirmed against the vendor app and read live
+  from a PCM03SMAX. `week_series()`, `month_series()` and `year_series()`
+  return chart buckets for any week, month or year (use `offset` to go back).
 - Not supported on purpose: firmware update, reservations.
 
 ## Safety and warranty
