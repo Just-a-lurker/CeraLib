@@ -26,7 +26,9 @@ See [PROTOCOL.md](PROTOCOL.md).
 - Presoak and standstill are `presoak_s` / `standstill_s` (confirmed).
   Extraction time is `extraction_raw`; the seconds formula (`raw/2 + 60`) is
   inferred from two points only.
-- Not supported on purpose: firmware update, reservations, history.
+- `get_stats()` reads cups per day (about 10 months) with week, month and
+  year totals; the format is confirmed against the vendor app.
+- Not supported on purpose: firmware update, reservations.
 
 ## Safety and warranty
 

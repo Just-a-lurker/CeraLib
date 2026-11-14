@@ -6,15 +6,17 @@ action in a capture, "inferred" means it fits the data but was not isolated.
 
 from __future__ import annotations
 
+import datetime as _dt
 import enum
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 # Command bytes.
 CMD_STATUS = 0x00        # heartbeat (machine pushes ~1/s); app sends it empty on connect
 CMD_BREW = 0x02          # payload [mode, on]
 CMD_SET_CLOCK = 0x04     # payload [year-2020, month, day, weekday, hour, minute, second]
-CMD_TABLE = 0x06         # multi-fragment table; request payload [0x00]; layout unknown
+CMD_STATS = 0x06         # cup counts per day; request payload [0x00]; reply in ~21 fragments
+CMD_TABLE = CMD_STATS    # kept for compatibility
 CMD_INFO = 0x08          # device info, fragmented
 CMD_LIMITS = 0x15        # reply [0x64?, 0xCC, target_F]; layout partly inferred
 CMD_TARGET_TEMP = 0x16   # payload [target in degrees Fahrenheit]; reply echoes it
@@ -132,6 +134,54 @@ class DeviceInfo:
             strings.append(payload[pos + 1 : pos + 1 + n].decode("ascii"))
             pos += 1 + n
         return cls(strings[0], strings[1], strings[2], bytes(payload[pos:]))
+
+
+@dataclass(frozen=True)
+class Stats:
+    """CMD_STATS reply: cups brewed per day, newest first.
+
+    Confirmed against the vendor app (week, month and year totals match):
+    payload[2] is the machine's current day, payload[3] the day before, and so
+    on (313 days on a PCM03SMAX). payload[0:2] (``01 39``) is not decoded.
+    "Today" is the machine's clock, which the client sets on connect.
+    """
+
+    header: bytes
+    daily: Tuple[int, ...]
+
+    @classmethod
+    def parse(cls, payload: bytes) -> "Stats":
+        if len(payload) < 3:
+            raise ValueError(f"stats payload too short: {len(payload)}")
+        return cls(bytes(payload[:2]), tuple(payload[2:]))
+
+    @property
+    def today(self) -> int:
+        return self.daily[0]
+
+    @property
+    def total(self) -> int:
+        """All cups in the stored days (not a lifetime total)."""
+        return sum(self.daily)
+
+    def by_date(self, today: _dt.date) -> Dict[_dt.date, int]:
+        return {today - _dt.timedelta(days=i): n for i, n in enumerate(self.daily)}
+
+    def _last(self, days: int) -> int:
+        return sum(self.daily[:days])
+
+    def week(self, today: _dt.date, week_start: int = 6) -> int:
+        """Cups since the start of this week. ``week_start`` uses Python's
+        weekday numbers: 6 = Sunday (default, like the vendor app, whose week
+        runs Sunday to Saturday), 0 = Monday."""
+        return self._last((today.weekday() - week_start) % 7 + 1)
+
+    def month(self, today: _dt.date) -> int:
+        return self._last(today.day)
+
+    def year(self, today: _dt.date) -> int:
+        """Cups since 1 January, limited to the days the machine stores."""
+        return self._last(today.timetuple().tm_yday)
 
 
 def clock_payload(year: int, month: int, day: int, weekday: int,
