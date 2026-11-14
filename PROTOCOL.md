@@ -34,6 +34,9 @@ likely accepts a single connection, so close the vendor app first.
 - Most set commands are acknowledged by a reply with the same `cmd` and
   payload `01`. `0x16` echoes the value instead.
 - If there is no reply within ~0.4 s the vendor app re-sends the command.
+- Right after connecting, the machine sometimes ignores commands entirely.
+  The vendor app hits this too: in one capture it re-sent the clock command
+  for ~12 s and reconnected before getting a reply.
 
 ## Connect sequence used by the vendor app (confirmed)
 
@@ -79,7 +82,9 @@ was `3C` while the app showed 3 of 4 battery bars (**inferred**: battery).
 18 write:  [flow] [A] [B] [ext]
 ```
 
-- `flow`: `08` normal, `0F` high (confirmed); `09` also seen.
+- `flow`: the app's flow slider, whole steps from `1` (min) to `15` (max);
+  `8` is the middle and the default (confirmed: min 1, min+1 2, middle 8,
+  max-1 14, max 15).
 - `A` presoak and `B` standstill, in seconds (confirmed: presoak 0 -> 1 s changed `A`, standstill 0 -> 1 s changed `B`).
 - `ext`: extraction time. The app showed 120 s -> 130 s while `ext` went `78` (120) -> `8C` (140), so `seconds = ext/2 + 60`
   (**inferred from two points**; needs a third value to confirm).

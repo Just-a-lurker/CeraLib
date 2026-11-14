@@ -54,8 +54,13 @@ STATE_TO_MODE = {
 }
 
 # Flow values seen: 0x08 = "normal", 0x0F = "high" (confirmed), 0x09 (capture 1).
-FLOW_NORMAL = 0x08
-FLOW_HIGH = 0x0F
+# Flow is the vendor app's slider: whole steps from 1 to 15, middle 8 is the
+# default (confirmed: min=1, min+1=2, middle=8, max-1=14, max=15).
+FLOW_MIN = 1
+FLOW_MAX = 15
+FLOW_DEFAULT = 8
+FLOW_NORMAL = FLOW_DEFAULT  # kept for compatibility
+FLOW_HIGH = FLOW_MAX        # kept for compatibility
 
 
 def c_to_f(celsius: float) -> int:
@@ -91,7 +96,7 @@ class Settings:
     """
 
     raw: bytes
-    flow: int             # confirmed: 0x08 normal, 0x0F high
+    flow: int             # confirmed: slider step FLOW_MIN..FLOW_MAX (1-15), default 8
     presoak_s: int        # confirmed: presoak seconds (0 -> 1 s)
     standstill_s: int     # confirmed: standstill seconds (0 -> 1 s)
     extraction_raw: int   # confirmed to change with extraction time; see extraction_seconds
