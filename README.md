@@ -44,7 +44,12 @@ void its warranty, and this software comes with no warranty of any kind (see
 pip install git+https://github.com/Just-a-lurker/CeraLib.git
 ```
 
-Requires Python 3.9+ and [bleak](https://github.com/hbldh/bleak).
+Requires Python 3.9+ and [bleak](https://github.com/hbldh/bleak) 1.x, the
+version tested on hardware. Newer bleak major versions are not allowed until
+they have been tested.
+
+To use a fixed release, install a tag, for example
+`pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.1.0`.
 
 ## Use
 
