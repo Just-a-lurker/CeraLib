@@ -127,3 +127,23 @@ across connections. A time that has already passed today runs the next day
 
 Target (`16`, `15`) is in °F: `raw = round(°C × 9/5 + 32)`. The heartbeat
 temperature is in °C.
+
+## Open questions
+
+Captures that answer these are the most useful contributions. Change one
+thing at a time and note exactly what the vendor app showed.
+
+- **Battery scale.** Heartbeat byte `3C` (60) matched 3 of 4 bars once. A few
+  more readings at different charge levels would give the scale.
+- **Extraction time formula.** `seconds = raw/2 + 60` fits 120 s and 130 s
+  only. A third value (for example 150 s) would confirm it.
+- **Unknown settings bytes** (`0a`, `1e fa 01 0f` in the `17` reply). The
+  vendor app has an *extraction pressure* setting with a minimum and maximum;
+  changing it once may show which bytes it uses.
+- **`15` reply** (`64 CC <F>`): what `64` and `CC` mean (limits?).
+- **`19`**, sent when the vendor app opens its history page.
+- **Heat & extract phases.** The heartbeat state stays `01` for the whole
+  run; no message marking the switch from heating to extraction has been
+  seen yet. A capture of a full run left to finish by itself would help.
+- **`08` device info**: the first byte (`18`) and the trailing `06 02 02 02 02 02`.
+- **Other models** (PCM03S, PCM03SPRO): whether they use the same protocol.
