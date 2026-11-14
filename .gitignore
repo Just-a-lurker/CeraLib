@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+.venv/
+# never commit raw captures: they contain Bluetooth addresses
+*.log
+*.btsnoop
+*.cfa
+bugreport*.zip

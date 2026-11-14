@@ -1,0 +1,18 @@
+[project]
+name = "ceralib"
+version = "0.1.0"
+description = "Local BLE control library for PCM03-family portable espresso machines"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+dependencies = ["bleak>=0.22"]
+
+[project.urls]
+Source = "https://github.com/Just-a-lurker/CeraLib"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["cera"]
