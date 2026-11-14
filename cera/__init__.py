@@ -6,5 +6,5 @@ from .messages import (  # noqa: F401
     Status, c_to_f, f_to_c,
 )
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 from .scan import Found, discover  # noqa: F401,E402
