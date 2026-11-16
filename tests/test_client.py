@@ -230,6 +230,15 @@ class ClientTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(CeraError):
             await c.get_settings()
 
+    async def test_target_temperature_range(self):
+        c = self.make()
+        with self.assertRaises(ValueError):
+            await c.set_target_temp_c(37)
+        await c.connect()
+        await c.set_target_temp_c(38)                      # the machine's own 100 F floor
+        sent = [decode(w).payload for w in self.machine.clients[0].written if decode(w).cmd == m.CMD_TARGET_TEMP]
+        self.assertEqual(sent, [bytes([0x64])])
+
     async def test_same_command_calls_take_turns(self):
         c = self.make()
         await c.connect()

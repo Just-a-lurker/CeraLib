@@ -20,7 +20,7 @@ field marked confirmed or inferred.
 |---|---|---|
 | Find machines | `cera.discover()` | Verified on hardware |
 | Connect, device info, live status (water °C, state, battery) | `CeraClient`, `.info`, `.status`, `on_status` | Verified on hardware |
-| Target temperature | `set_target_temp_c()` | Verified on hardware |
+| Target temperature (38–95 °C) | `set_target_temp_c()` | Verified on hardware |
 | Recipe: flow 1–15, presoak, standstill, extraction time | `get_settings()`, `update_settings()` | Verified on hardware |
 | Start and stop: heat, extract, heat & extract | `start()`, `stop()` | Verified on hardware |
 | Cup history: per day, week, month and year | `get_stats()`, `Stats.week_series()` and friends | Verified on hardware, matches the vendor app |

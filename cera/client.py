@@ -25,8 +25,9 @@ RETRIES = 2
 HEARTBEAT_WAIT = 1.0       # per status request, before it is sent again
 HEARTBEAT_REQUESTS = 3
 
-# Observed range only: the app offered 90-95 C in captures. Not a machine limit.
-MIN_TARGET_C = 60
+# The vendor app's slider reaches 38 C, and the CMD_LIMITS reply agrees: it starts
+# at 0x64 (100 F = 37.8 C) and tops out at 0xCC (204 F = 95.6 C).
+MIN_TARGET_C = 38
 MAX_TARGET_C = 95
 
 
