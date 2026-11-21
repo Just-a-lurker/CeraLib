@@ -14,7 +14,7 @@ python -m unittest tests.test_client.ClientTests.test_handshake        # one tes
 
 - `-t .` is required: tests import `tests.vectors`.
 - No machine is needed. `test_codec.py` replays real captured frames. `test_client.py` drives `CeraClient` against a scripted fake `BleakClient` (it needs bleak installed, but no Bluetooth).
-- CI runs Python 3.9 and 3.12, so 3.9 syntax and stdlib are the limit.
+- CI runs Python 3.9 and 3.12, so 3.9 syntax and stdlib are the limit. The runner is pinned to `ubuntu-24.04` because `ubuntu-latest` (26.04) has no Python 3.9 build.
 - `main` is protected: changes go through a PR with passing CI.
 
 ## Architecture
