@@ -62,7 +62,7 @@ void its warranty, and this software comes with no warranty of any kind (see
 ## Install
 
 ```
-pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.4.1
+pip install git+https://github.com/Just-a-lurker/CeraLib.git@v0.5.0
 ```
 
 Requires Python 3.9+ and [bleak](https://github.com/hbldh/bleak) 1.x, the
@@ -131,7 +131,7 @@ contain Bluetooth addresses and other private traffic.
 
 ## Apps using CeraLib
 
-- [CeraOpenApp](https://github.com/Just-a-lurker/CeraOpenApp): local app with a browser UI.
+- [CeraOpenApp](https://github.com/Just-a-lurker/CeraOpenApp): local app with a browser UI. Its native Android app carries a Kotlin port of this protocol instead of using CeraLib.
 
 ## License
 
